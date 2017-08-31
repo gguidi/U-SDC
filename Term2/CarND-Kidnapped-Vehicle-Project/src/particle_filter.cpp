@@ -83,28 +83,36 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	}
 }
 
-void ParticleFilter::dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations) {
+std::vector<LandmarkTrueToObs> ParticleFilter::dataAssociation(std::vector<LandmarkObs> landmarks, std::vector<LandmarkObs>& observations) {
 	// TODO: Find the predicted measurement that is closest to each observed measurement and assign the 
 	//   observed measurement to this particular landmark.
 	// NOTE: this method will NOT be called by the grading code. But you will probably find it useful to 
 	//   implement this method and use it as a helper during the updateWeights phase.
 
-	double min_dist = 50; 
-	for(int i=0; i<predicted.size(); i++){
-		for(int j=0; j<observations.size(); j++){
-			double x1 = predicted[i].x;
-			double y1 = predicted[i].y;
+	std::vector<LandmarkTrueToObs> LandmarkAssociation; 
+	for(int i=0; i<landmarks.size(); i++)
+	{
+		double min_dist = numeric_limits<double>::max();; 
+		double x1 = landmarks[i].x;
+		double y1 = landmarks[i].y;
+		int id = landmarks[i].id;
+		double x_obs=0; 
+		double y_obs=0;
+		for(int j=0; j<observations.size(); j++)
+		{
 			double x2 = observations[j].x;
 			double y2 = observations[j].y;
 
 			double new_dist = dist(x1,y1,x2,y2);
 			if (new_dist<min_dist){
 				min_dist = new_dist;
-				observations[j].id = predicted[i].id;
+				x_obs= observations[j].x;
+				y_obs = observations[j].y;
 			}
 		}
+		LandmarkAssociation.push_back({id, x1, y1, x_obs, y_obs});
 	}
-
+	return LandmarkAssociation;
 }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
@@ -120,38 +128,69 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
 
-		// don't forget to #include <math.h>
-	sig_x= std_landmark[0];
-	sig_y= std_landmark[1];
+	/*
+	the sensor can only see in a certain range. 
+	When we know the position of the particle, we can assume that the sensor will only see in a certain perimeter
+	so we can only look at the landmarks that are in this perimeter for this particle.
+	Once we have all the observations in the map coordinate system for a given particule, we can associate a landmark to 
+	its closest observation. 
+	I decided to have a structure holding this information. 
+	With all that, we can calculate the new weights.
+	*/
+
+	int radius = sensor_range;
 	// copy the obersations
-	std::vector<LandmarkObs> predicted = observations
+	std::vector<LandmarkObs> observations_mapFrame = observations;
+
 	// for each particle
 	for (int j=0; j<particles.size(); j++){
+		// list of all landmarks within range of this particle
+		std::vector<LandmarkObs> landmarks_withinRange;
+		// get particle coordinates
+		double p_x = particles[j].x;
+		double p_y = particles[j].y;
+		double p_theta = particles[j].theta;
 		// re-initialize the predicted for a new particle 
-		predicted = observations
+		observations_mapFrame = observations;
 		// transform the observation from the vehicle coordinate system to the map coordinate system 
-		for(int i=0; i<predicted.size(); i++)
+		for(int i=0; i<observations_mapFrame.size(); i++)
 		{
-			predicted.x = particles[j].x + cos(particles[j].theta * predicted.x) - sin(particles[j].theta * predicted.y);
-			predicted.y = particles[j].y + sin(particles[j].theta * predicted.x) + cos(particles[j].theta * predicted.y);
+			observations_mapFrame[i].x = p_x + cos(p_theta) * observations[i].x - sin(p_theta)* observations[i].y;
+			observations_mapFrame[i].y = p_y + sin(p_theta) * observations[i].x + cos(p_theta)* observations[i].y;
 		}
-		// associate the observation with landmarks
-		dataAssociation(predicted, map_landmarks);
-		// calculate the final weight
-		total_weight = 1;
-		for(int i=0; i<predicted.size(); i++)
+
+		for(int l=0; l<map_landmarks.landmark_list.size(); l++)
 		{
-			double x_obs=predicted[i].x;
-			double y_obs=predicted[i].y;
-			double x_mu=map_landmarks[predicted[i].id]
-			double y_mu = 
-			gauss_norm= (1/(2 * M_PI * sig_x * sig_y));
-			exponent=(pow((x_obs - x_mu),2.0)/(2 * sig_x*sig_x) + (pow((y_obs - y_mu),2.0))/(2 * sig_y*sig_y);
-			particles[i].weight = gauss_norm * exp(-exponent);
-			total_weight *= particles[i].weight;
+			float l_x = map_landmarks.landmark_list[l].x_f;
+			float l_y = map_landmarks.landmark_list[l].y_f;
+			int l_id = map_landmarks.landmark_list[l].id_i;
+
+			if(point_inside_circle(l_x, l_y, p_x, p_y, radius))
+			{
+				landmarks_withinRange.push_back(LandmarkObs{ l_id, l_x, l_y});
+			}
+
 		}
-		//update the weights vector
-		weights[j] = total_weight;
+
+		// associate the landmarks that are in range with the closest obervation
+		std::vector<LandmarkTrueToObs> predicted_landmarks = dataAssociation(landmarks_withinRange, observations_mapFrame);
+		// re-init the weights of each particle
+		particles[j].weight= 1.;
+		
+		double sig_x = std_landmark[0];
+		double sig_y = std_landmark[1];
+
+		for(int i=0; i<predicted_landmarks.size(); i++)
+		{
+			double x_obs=predicted_landmarks[i].x_obs;
+			double y_obs=predicted_landmarks[i].y_obs;
+			double x_mu=predicted_landmarks[i].x_map;
+			double y_mu = predicted_landmarks[i].y_map;
+			double gauss_norm= (1/(2 * M_PI * sig_x * sig_y));
+			double exponent=(pow((x_obs - x_mu),2.0)/(2 * sig_x*sig_x) + (pow((y_obs - y_mu),2.0))/(2 * sig_y*sig_y));
+			particles[j].weight *= gauss_norm * exp(-exponent);
+		}
+		weights[j] = particles[j].weight;
 	}
 }
 
@@ -159,7 +198,31 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+	// generate random starting index for resampling wheel
+	static default_random_engine gen;
+	vector<Particle> new_particles;
+	//randomly draw the index of a particle
+	uniform_int_distribution<int> uniintdist(0, num_particles-1);
+	auto index = uniintdist(gen);
 
+	// get max weight
+	double max_weight = *max_element(weights.begin(), weights.end());
+
+	// uniform random distribution [0.0, max_weight)
+	uniform_real_distribution<double> unirealdist(0.0, 2*max_weight);
+
+	double beta = 0.0;
+
+	// spin the resample wheel!
+	for (int i = 0; i < num_particles; i++) {
+	beta += unirealdist(gen);
+	while (beta > weights[index]) {
+	  beta -= weights[index];
+	  index = (index + 1) % num_particles;
+	}
+	new_particles.push_back(particles[index]);
+	}
+	particles = new_particles;
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y)
@@ -207,4 +270,8 @@ string ParticleFilter::getSenseY(Particle best)
     string s = ss.str();
     s = s.substr(0, s.length()-1);  // get rid of the trailing space
     return s;
+}
+
+bool point_inside_circle(float center_x, float center_y, double o_x, double o_y, double radius){
+	return (pow((center_x-o_x),2.0) + pow((center_y-o_y),2.0)) < radius*radius;
 }

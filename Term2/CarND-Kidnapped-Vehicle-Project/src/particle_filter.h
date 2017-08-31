@@ -30,13 +30,13 @@ class ParticleFilter {
 	// Number of particles to draw
 	int num_particles; 
 	
-	
-	
 	// Flag, if filter is initialized
 	bool is_initialized;
 	
 	// Vector of weights of all particles
 	std::vector<double> weights;
+
+	bool point_inside_circle(float center_x, float center_y, double o_x, double o_y, double radius){};
 	
 public:
 	
@@ -78,7 +78,7 @@ public:
 	 * @param predicted Vector of predicted landmark observations
 	 * @param observations Vector of landmark observations
 	 */
-	void dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
+	std::vector<LandmarkTrueToObs> dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
 	
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 

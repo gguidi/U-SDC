@@ -44,6 +44,18 @@ struct LandmarkObs {
 };
 
 /*
+ * Struct representing one landmark observation measurement.
+ */
+struct LandmarkTrueToObs {
+	
+	int id;				// Id of matching landmark in the map.
+	double x_map;			// Map frame - x position of the landmark 
+	double y_map;			// Map frame - y position of the landmark 
+	double x_obs;			// Map frame - x position of the landmark as observed by the sensor
+	double y_obs ;			// Map frame - y position of the landmark as observed by the sensor
+};
+
+/*
  * Computes the Euclidean distance between two 2D points.
  * @param (x1,y1) x and y coordinates of first point
  * @param (x2,y2) x and y coordinates of second point
