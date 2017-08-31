@@ -119,6 +119,40 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   and the following is a good resource for the actual equation to implement (look at equation 
 	//   3.33
 	//   http://planning.cs.uiuc.edu/node99.html
+
+		// don't forget to #include <math.h>
+	sig_x= std_landmark[0];
+	sig_y= std_landmark[1];
+	// copy the obersations
+	std::vector<LandmarkObs> predicted = observations
+	// for each particle
+	for (int j=0; j<particles.size(); j++){
+		// re-initialize the predicted for a new particle 
+		predicted = observations
+		// transform the observation from the vehicle coordinate system to the map coordinate system 
+		for(int i=0; i<predicted.size(); i++)
+		{
+			predicted.x = particles[j].x + cos(particles[j].theta * predicted.x) - sin(particles[j].theta * predicted.y);
+			predicted.y = particles[j].y + sin(particles[j].theta * predicted.x) + cos(particles[j].theta * predicted.y);
+		}
+		// associate the observation with landmarks
+		dataAssociation(predicted, map_landmarks);
+		// calculate the final weight
+		total_weight = 1;
+		for(int i=0; i<predicted.size(); i++)
+		{
+			double x_obs=predicted[i].x;
+			double y_obs=predicted[i].y;
+			double x_mu=map_landmarks[predicted[i].id]
+			double y_mu = 
+			gauss_norm= (1/(2 * M_PI * sig_x * sig_y));
+			exponent=(pow((x_obs - x_mu),2.0)/(2 * sig_x*sig_x) + (pow((y_obs - y_mu),2.0))/(2 * sig_y*sig_y);
+			particles[i].weight = gauss_norm * exp(-exponent);
+			total_weight *= particles[i].weight;
+		}
+		//update the weights vector
+		weights[j] = total_weight;
+	}
 }
 
 void ParticleFilter::resample() {
