@@ -29,33 +29,33 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// random engine used for sampling from normal distribution
 	default_random_engine gen;
 	// create random distribution 
-	normal_distribution<double> dist_x(x, std[0]);
-	normal_distribution<double> dist_y(y, std[1]);
-	normal_distribution<double> dist_theta(theta, std[2]);
+	normal_distribution<double> dist_x(0, std[0]);
+	normal_distribution<double> dist_y(0, std[1]);
+	normal_distribution<double> dist_theta(0, std[2]);
 	// choose tje number of particles
 	num_particles = 100;
 	//initialize the weights to 1
 	//initialize all particles to first position and add random noise
 	weights[num_particles];
-	particles[num_particles];
 	for(int i=0; i<num_particles; i++){
 		// sample the gaussian random distribution 
-		double sample_x = dist_x(gen);
-        double sample_y = dist_y(gen);
-        double sample_theta = dist_theta(gen);
+		double noise_x = dist_x(gen);
+        double noise_y = dist_y(gen);
+        double noise_theta = dist_theta(gen);
+        //create a particule
+        Particle p;
         //init weight
-		weights[i]=1;
+		weights[i]=1.0;
 		//init particle i
-		particles[i].id = i;
-		particles[i].x = x + sample_x; 
-		particles[i].y = y + sample_y;
-		particles[i].theta = theta + sample_theta;
-		particles[i].weight = 1;
-		// initialize the association ???
+		p.id = i;
+		p.x = x + noise_x; 
+		p.y = y + noise_y;
+		p.theta = theta + noise_theta;
+		p.weight = 1.0;
+		// add the particule to the vector
+		particles.push_back(p);
 	}
-	
-
-
+	is_initialized = true;
 }
 
 void ParticleFilter::prediction(double delta_t, double std_pos[], double velocity, double yaw_rate) {
@@ -67,19 +67,27 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	// random engine used for sampling from normal distribution
 	default_random_engine gen;
 	// create random distribution 
-	//normal_distribution<double> dist_x(x, std_pos[0]);
-	//normal_distribution<double> dist_y(y, std_pos[1]);
-	//normal_distribution<double> dist_theta(theta, std_pos[2]);
+	normal_distribution<double> dist_x(0, std_pos[0]);
+	normal_distribution<double> dist_y(0, std_pos[1]);
+	normal_distribution<double> dist_theta(0, std_pos[2]);
 
 	for(int i=0; i<num_particles; i++){
 		// sample the gaussian random distribution 
-		//double sample_x = dist_x(gen);
-        //double sample_y = dist_y(gen);
-        //double sample_theta = dist_theta(gen);
-        double a = velocity/yaw_rate;
-		particles[i].x = particles[i].x + a*(sin(particles[i].theta+yaw_rate*delta_t)-sin(particles[i].theta)); 
-		particles[i].y = particles[i].y + a*(cos(particles[i].theta)-cos(particles[i].theta+yaw_rate*delta_t));
-		particles[i].theta = particles[i].theta + yaw_rate*delta_t;
+		double noise_x = dist_x(gen);
+        double noise_y = dist_y(gen);
+        double noise_theta = dist_theta(gen);
+        //do not divide by zero
+        if(fabs(yaw_rate>0.0001)){
+        	double a = velocity/yaw_rate;
+		particles[i].x +=  a*(sin(particles[i].theta+yaw_rate*delta_t)-sin(particles[i].theta))+ noise_x; 
+		particles[i].y +=  a*(cos(particles[i].theta)-cos(particles[i].theta+yaw_rate*delta_t))+ noise_y;
+		particles[i].theta += yaw_rate*delta_t + noise_theta;
+        }
+        else{
+        	// yaw rate is zero so the yaw hasn't changed
+        	particles[i].x += velocity*delta_t*cos(particles[i].theta)+ noise_x; 
+			particles[i].y += velocity*delta_t*sin(particles[i].theta)+ noise_x; 
+        }
 	}
 }
 
@@ -215,12 +223,12 @@ void ParticleFilter::resample() {
 
 	// spin the resample wheel!
 	for (int i = 0; i < num_particles; i++) {
-	beta += unirealdist(gen);
-	while (beta > weights[index]) {
-	  beta -= weights[index];
-	  index = (index + 1) % num_particles;
-	}
-	new_particles.push_back(particles[index]);
+		beta += unirealdist(gen);
+		while (beta > weights[index]) {
+			beta -= weights[index];
+			index = (index + 1) % num_particles;
+		}
+		new_particles.push_back(particles[index]);
 	}
 	particles = new_particles;
 }
