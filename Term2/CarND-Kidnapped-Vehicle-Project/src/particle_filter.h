@@ -35,8 +35,6 @@ class ParticleFilter {
 	
 	// Vector of weights of all particles
 	std::vector<double> weights;
-
-	bool point_inside_circle(float center_x, float center_y, double o_x, double o_y, double radius){};
 	
 public:
 	
@@ -78,7 +76,7 @@ public:
 	 * @param predicted Vector of predicted landmark observations
 	 * @param observations Vector of landmark observations
 	 */
-	std::vector<LandmarkTrueToObs> dataAssociation(std::vector<LandmarkObs> predicted, std::vector<LandmarkObs>& observations);
+	std::vector<LandmarkTrueToObs> dataAssociation(std::vector<LandmarkObs>& landmarks, std::vector<LandmarkObs>& observations);
 	
 	/**
 	 * updateWeights Updates the weights for each particle based on the likelihood of the 
@@ -107,6 +105,7 @@ public:
 	std::string getAssociations(Particle best);
 	std::string getSenseX(Particle best);
 	std::string getSenseY(Particle best);
+	bool point_inside_circle(float center_x, float center_y, double o_x, double o_y, double radius);
 
 	/**
 	 * initialized Returns whether particle filter is initialized yet or not.

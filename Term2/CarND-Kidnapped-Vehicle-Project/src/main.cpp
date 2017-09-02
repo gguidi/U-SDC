@@ -50,7 +50,7 @@ int main()
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
-
+    static int counter = 0; 
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
 
@@ -64,7 +64,13 @@ int main()
         if (event == "telemetry") {
           // j[1] is the data JSON object
 
-
+          /*
+          counter +=1;
+          if(counter==3){
+            cout << "stopping" << endl;
+            return;
+          }
+          */
           if (!pf.initialized()) {
 
             // Sense noisy position data from the simulator
@@ -91,24 +97,29 @@ int main()
 		  	std::vector<float> x_sense;
   			std::istringstream iss_x(sense_observations_x);
 
-  			std::copy(std::istream_iterator<float>(iss_x),
-        	std::istream_iterator<float>(),
-        	std::back_inserter(x_sense));
+        std::copy(std::istream_iterator<float>(iss_x),
+        std::istream_iterator<float>(),
+        std::back_inserter(x_sense));
 
-        	std::vector<float> y_sense;
-  			std::istringstream iss_y(sense_observations_y);
+        std::vector<float> y_sense;
+        std::istringstream iss_y(sense_observations_y);
 
-  			std::copy(std::istream_iterator<float>(iss_y),
-        	std::istream_iterator<float>(),
-        	std::back_inserter(y_sense));
-
-        	for(int i = 0; i < x_sense.size(); i++)
-        	{
-        		LandmarkObs obs;
-        		obs.x = x_sense[i];
-				obs.y = y_sense[i];
-				noisy_observations.push_back(obs);
-        	}
+        std::copy(std::istream_iterator<float>(iss_y),
+        std::istream_iterator<float>(),
+        std::back_inserter(y_sense));
+        cout<<"---Observations---" << endl;
+        for(int i = 0; i < x_sense.size(); i++)
+        {
+          LandmarkObs obs;
+          obs.x = x_sense[i];
+          obs.y = y_sense[i];
+          /*
+          cout << "x: "<< obs.x<< endl;
+          cout << "y: "<< obs.y<< endl;
+          cout << "---" << endl;
+          */
+          noisy_observations.push_back(obs);
+        }
 
 		  // Update the weights and resample
 		  pf.updateWeights(sensor_range, sigma_landmark, noisy_observations, map);
@@ -120,15 +131,19 @@ int main()
 		  double highest_weight = -1.0;
 		  Particle best_particle;
 		  double weight_sum = 0.0;
+      int best_particle_id = -1;
 		  for (int i = 0; i < num_particles; ++i) {
 			if (particles[i].weight > highest_weight) {
 				highest_weight = particles[i].weight;
 				best_particle = particles[i];
+        best_particle_id = particles[i].id;
 			}
 			weight_sum += particles[i].weight;
 		  }
 		  cout << "highest w " << highest_weight << endl;
 		  cout << "average w " << weight_sum/num_particles << endl;
+      cout << "best w id " << best_particle_id << endl;
+      cout << "---" << endl;
 
           json msgJson;
           msgJson["best_particle_x"] = best_particle.x;
