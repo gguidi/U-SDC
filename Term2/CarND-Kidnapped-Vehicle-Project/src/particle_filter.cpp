@@ -70,9 +70,8 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 		double noise_x = dist_x(gen);
         double noise_y = dist_y(gen);
         double noise_theta = dist_theta(gen);
-        cout << "p_x" << particles[i].x << endl;
         //do not divide by zero
-        if(fabs(yaw_rate>0.001)){
+        if(fabs(yaw_rate)>0.001){
         	double a = velocity/yaw_rate;
 			particles[i].x +=  a*(sin(particles[i].theta+yaw_rate*delta_t)-sin(particles[i].theta))+ noise_x; 
 			particles[i].y +=  a*(cos(particles[i].theta)-cos(particles[i].theta+yaw_rate*delta_t))+ noise_y;
@@ -83,7 +82,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         	particles[i].x += velocity*delta_t*cos(particles[i].theta)+ noise_x; 
 			particles[i].y += velocity*delta_t*sin(particles[i].theta)+ noise_y; 
         }
-        cout << "p_x updated " << particles[i].x << endl;
 	}
 }
 
@@ -94,8 +92,6 @@ std::vector<LandmarkTrueToObs> ParticleFilter::dataAssociation(std::vector<Landm
 	//   implement this method and use it as a helper during the updateWeights phase.
 
 	std::vector<LandmarkTrueToObs> LandmarkAssociation; 
-	cout << "landmarks.size()" << landmarks.size() <<endl;
-	cout << "observations.size()" << observations.size() <<endl;
 	for(int i=0; i<landmarks.size(); i++)
 	{
 		double min_dist = 1000000; 
@@ -104,11 +100,6 @@ std::vector<LandmarkTrueToObs> ParticleFilter::dataAssociation(std::vector<Landm
 		int id = landmarks[i].id;
 		double x_obs=0;
 		double y_obs=0;
-		//cout << "x1 " <<x1 << endl;
-		//cout << "y1 " <<y1 << endl;
-		//cout << "land id  " <<id << endl;
-		//cout << "x_land " <<x_obs << endl;
-		//cout << "y_land " <<y_obs << endl;
 		
 		for(int j=0; j<observations.size(); j++)
 		{
@@ -122,9 +113,6 @@ std::vector<LandmarkTrueToObs> ParticleFilter::dataAssociation(std::vector<Landm
 				y_obs = y2;
 			}
 		}
-		//cout << "matched with:" << endl;
-		//cout << "x_obs " <<x_obs << endl;
-		//cout << "y_obs " <<y_obs << endl;
 		LandmarkAssociation.push_back({id, x1, y1, x_obs, y_obs});
 	}
 	return LandmarkAssociation;
@@ -184,7 +172,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				landmarks_withinRange.push_back(LandmarkObs{l_id, l_x, l_y});
 
 			}
-
 		}
 		// associate the landmarks that are in range with the closest obervation
 		std::vector<LandmarkTrueToObs> predicted_landmarks = dataAssociation(landmarks_withinRange, observations_mapFrame);
@@ -195,22 +182,22 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		double sig_y = std_landmark[1];
 		double cov_x = sig_x*sig_x;
 		double cov_y = sig_y*sig_y;
-
-		for(int i=0; i<predicted_landmarks.size(); i++)
+		double gauss_norm= (1/(2.0 * M_PI * sig_x * sig_y));
+		if(predicted_landmarks.size()>0)
 		{
-			double x_obs=predicted_landmarks[i].x_obs;
-			double y_obs=predicted_landmarks[i].y_obs;
-			double x_mu=predicted_landmarks[i].x_map;
-			double y_mu = predicted_landmarks[i].y_map;
-			//cout << "x_obs, x_mu " <<endl;
-			//cout << x_obs << ","<< x_mu  << endl;
-			//cout << "y_obs, y_mu " <<endl;
-			//cout << y_obs << ","<< y_mu  << endl;
-			double gauss_norm= (1/(2.0 * M_PI * sig_x * sig_y));
-			double exponent=(pow((x_obs - x_mu),2.0)/(2*cov_x) + (pow((y_obs - y_mu),2.0))/(2*cov_y));
-			particles[j].weight *= gauss_norm * exp(-exponent);
+			for(int i=0; i<predicted_landmarks.size(); i++)
+			{
+				double x_obs=predicted_landmarks[i].x_obs;
+				double y_obs=predicted_landmarks[i].y_obs;
+				double x_mu=predicted_landmarks[i].x_map;
+				double y_mu = predicted_landmarks[i].y_map;
+				double exponent=(pow((x_obs - x_mu),2.0)/(2*cov_x) + (pow((y_obs - y_mu),2.0))/(2*cov_y));
+				particles[j].weight *= gauss_norm * exp(-exponent);
+			}
 		}
-		cout <<  "weight "<<particles[j].weight<< endl;
+		else{ // couldn't find a landmark
+			particles[j].weight = 0;
+		}
 		weights[j] = particles[j].weight;
 	}
 }
@@ -245,19 +232,6 @@ void ParticleFilter::resample() {
 		new_particles.push_back(particles[index]);
 	}
 	particles = new_particles;
-	
-	/*
-	static default_random_engine gen;
-	std::discrete_distribution<int> d(weights.begin(), weights.end());
-	std::vector<Particle> new_particles;
-
-	for(unsigned i = 0; i < num_particles; i++)
-	{
-		auto ind = d(gen);
-		new_particles.push_back(std::move(particles[ind]));
-	}
-	particles = std::move(new_particles);
-	*/
 }
 
 Particle ParticleFilter::SetAssociations(Particle particle, std::vector<int> associations, std::vector<double> sense_x, std::vector<double> sense_y)

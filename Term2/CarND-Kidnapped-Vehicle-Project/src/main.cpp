@@ -107,17 +107,11 @@ int main()
         std::copy(std::istream_iterator<float>(iss_y),
         std::istream_iterator<float>(),
         std::back_inserter(y_sense));
-        cout<<"---Observations---" << endl;
         for(int i = 0; i < x_sense.size(); i++)
         {
           LandmarkObs obs;
           obs.x = x_sense[i];
           obs.y = y_sense[i];
-          /*
-          cout << "x: "<< obs.x<< endl;
-          cout << "y: "<< obs.y<< endl;
-          cout << "---" << endl;
-          */
           noisy_observations.push_back(obs);
         }
 
@@ -131,19 +125,15 @@ int main()
 		  double highest_weight = -1.0;
 		  Particle best_particle;
 		  double weight_sum = 0.0;
-      int best_particle_id = -1;
 		  for (int i = 0; i < num_particles; ++i) {
 			if (particles[i].weight > highest_weight) {
 				highest_weight = particles[i].weight;
 				best_particle = particles[i];
-        best_particle_id = particles[i].id;
 			}
 			weight_sum += particles[i].weight;
 		  }
 		  cout << "highest w " << highest_weight << endl;
 		  cout << "average w " << weight_sum/num_particles << endl;
-      cout << "best w id " << best_particle_id << endl;
-      cout << "---" << endl;
 
           json msgJson;
           msgJson["best_particle_x"] = best_particle.x;
