@@ -3,6 +3,7 @@
 
 class PID {
 public:
+  bool first_calculation;
   /*
   * Errors
   */
@@ -13,9 +14,9 @@ public:
   /*
   * Coefficients
   */ 
-  double Kp;
-  double Ki;
-  double Kd;
+  double Kp_;
+  double Ki_;
+  double Kd_;
 
   /*
   * Constructor
@@ -38,7 +39,7 @@ public:
   void UpdateError(double cte);
 
   /*
-  * Calculate the total PID error.
+  * Calculate the total PID error and returns the steering value.
   */
   double TotalError();
 };
